@@ -1,6 +1,6 @@
 #k6s version
 apiVersion: v1
-#k8s  kine name 
+#k8s  kind name 
 kind: PersistentVolume
 metadata:
   #name for k8s configure
@@ -20,4 +20,3 @@ spec:
   # set sample host path 
   hostPath:
     path: "/mnt/data"
-  
