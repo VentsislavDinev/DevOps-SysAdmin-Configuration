@@ -1,0 +1,40 @@
+- hosts: db-mysql
+  become: yes
+  vars_files:
+    #set main configuration 
+      -main.yaml
+  roles:
+    #set roles 
+    - { role: geerlingguy.mysql }
+  pre_tasks:
+ 
+    - name: Install the MySQL repo.
+ 
+      yum:
+ 
+        name: http://repo.mysql.com/mysql-community-release-el7-5.noarch.rpm
+ 
+        state: present
+ 
+      when: ansible_os_family == "RedHat"
+ 
+    - name: Override variables for MySQL (RedHat).
+ 
+      set_fact:
+ 
+        mysql_daemon: mysqld
+ 
+        mysql_packages: ['mysql-server']
+        #set error log file 
+        mysql_log_error: /var/lib/mysql/error.log
+ 
+        mysql_syslog_tag: mysqld
+        #set pid file
+        mysql_pid_file: /var/run/mysqld/mysqld.pid
+        #set musql sock file
+        mysql_socket: /var/lib/mysql/mysql.sock
+ 
+      when: ansible_os_family == "RedHat"
+#when all is ready please  set ansible-playbook configuration.yaml
+#mysql max connection please use: mysql -uroot -p -e 'select @@max_connections'
+#mysql max-allowed-packet please use: mysqldump --help | grep ^max-allowed-packet
