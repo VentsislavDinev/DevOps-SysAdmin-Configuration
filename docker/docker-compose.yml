@@ -1,0 +1,22 @@
+version: "3"
+services: 
+  web:
+    build: .
+    ports: 
+      #Run on port 80
+      - "8000:80"
+    depends_on:
+      #Configure db image for webb app.
+      - db
+  db: 
+    #get SQL Server Image 
+    image: "mcr.microsoft.com/mssql/server"
+    environment:
+          #Set password for SQL Server Image 
+            SA_PASSWORD: "Za-14-rzz"
+            #Accept license for the image
+            ACCEPT_EULA: "Y"
+#If you want use this image please use connection string "Server=db;Database=master;User=sa;Password=Za-14-rzz;"
+#then all is ready please run:  
+#docker-compose build - build all code 
+#docker-compose up - run web app on port :80
