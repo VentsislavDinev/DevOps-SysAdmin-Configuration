@@ -1,0 +1,23 @@
+#k6s version
+apiVersion: v1
+#k8s  kine name 
+kind: PersistentVolume
+metadata:
+  #name for k8s configure
+  name: task-pv-volume
+  #set labels for the current k8s configuration
+  labels:
+    type: local
+#set specification configuration for the k8s configuration 
+spec:
+  storageClassName: manual
+  #Set storage  capacity in GB
+  capacity:
+    storage: 10Gi
+  # set access modes for Read and Writes 
+  accessModes:
+    - ReadWriteOnce
+  # set sample host path 
+  hostPath:
+    path: "/mnt/data"
+  
