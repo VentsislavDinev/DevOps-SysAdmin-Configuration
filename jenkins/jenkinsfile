@@ -1,0 +1,74 @@
+pipeline{
+    // if we have a agent please change any with agent name. 
+    agent any
+    // It the stage can builds any code from source          
+    // control system, run all tests and deploy to docker,
+    // kubernetes, virtual machines etc.                               
+    stages{
+        // in this step we get source code and build code. 
+        // if we have bug send warning message to Jira, slack etc. 
+        stage("Dev"){
+            steps{
+                git credentialsId: 'Give Your Credential ID', url: 'https://github.com/VentsislavDinev/SampleRepoName.git/', branch: 'Branch on which you want to set the CI'
+                bat "dotnet restore SampleProjectPath\\Sample_Project.csproj"
+                bat "dotnet clean SampleProjectPath\\Sample_Project.csproj.csproj"
+                bat "dotnet build SampleProjectPath\\Sample_Project.csproj --configuration Release"
+            }
+           post{
+                failure{
+                   echo "We have problem!!!"
+                    emailext body: "${DEFAULT_CONTENT}",
+                            recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
+                            subject: "${DEFAULT_SUBJECT}" 
+                }
+            } 
+        }
+        // in this step we get all test and run. 
+        // if we find bug we send failure notification to Jira, slack etc.
+        stage("Test"){
+            steps{
+                bat "dotnet test SampleProject\\UnitTest_Project.csproj"
+            }
+            post{
+                failure{
+                    echo "We have problem!!!"
+                    emailext body: "${DEFAULT_CONTENT}",
+                            recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
+                            subject: "${DEFAULT_SUBJECT}"
+                }
+        
+            }
+        }
+
+        // in this step we get all code and deploy to docker, VM etc
+        // if we have problem we send failute notification to Jirra, Slack etc. 
+        stage("Deloy"){
+            steps{
+                sh "ssh user@server rm -rf /var/www/temp_deploy/dist/"
+                sh "ssh user@server mkdir -p /var/www/temp_deploy"
+                sh "scp -r dist user@server:/var/www/temp_deploy/dist/"
+                sh "ssh user@server "rm -rf /var/www/vdinev.com/dist/ && mv /var/www/temp_deploy/dist/ /var/www/vdinev.com/""
+                // if you want publish with bat and dotnet cli please use:
+                bat "dotnet publish SampleProjectPath\\Sample_Project.csproj "
+            }
+            post{
+                failure{
+                    echo "We have problem!!!"
+                    emailext body: "${DEFAULT_CONTENT}",
+                            recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
+                            subject: "${DEFAULT_SUBJECT}"
+                }
+        
+            }
+        }
+    }
+    // if we have bug in steps or agent etc send notiifacation to Jirra, Slack etc.
+    post{
+        failure{
+            echo "We have problem!!!"
+            emailext body: "${DEFAULT_CONTENT}",
+                recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
+                subject: "${DEFAULT_SUBJECT}"
+        }
+    }
+}
