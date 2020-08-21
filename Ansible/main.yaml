@@ -1,0 +1,47 @@
+#Please use Azure Vault/ HashiCorp Vault etc for more security 
+Password = "Za-15-rza"
+mysql_root_password: Password
+mysql_databases:
+ 
+  - name: myshop
+ 
+    encoding: latin1
+ 
+    collation: latin1_general_ci
+ 
+  - name: sysbench
+ 
+    encoding: latin1
+ 
+    collation: latin1_general_ci
+ 
+mysql_users:
+ 
+  - name: myshop_user
+ 
+    host: "%"
+ 
+    password: mySh0pPassw0rd
+ 
+    priv: "myshop.*:ALL"
+ 
+  - name: sysbench_user
+ 
+    host: "192.168.0.%"
+ 
+    password: sysBenchPassw0rd
+ 
+    priv: "sysbench.*:ALL"
+mysql_slow_query_log_enabled: true
+ 
+mysql_slow_query_log_file: 'slow_query.log'
+ 
+mysql_slow_query_time: '5.000000'
+
+mysql_config_include_files: [
+ 
+  src: 'my-severalnines.cnf',
+ 
+  src: 'mysqldump.cnf'
+ 
+]

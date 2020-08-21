@@ -13,7 +13,7 @@ services:
     image: "mcr.microsoft.com/mssql/server"
     environment:
           #Set password for SQL Server Image 
-            SA_PASSWORD: "Za-14-rzz"
+            SA_PASSWORD: ${PASSWORD}
             #Accept license for the image
             ACCEPT_EULA: "Y"
 #If you want use this image please use connection string "Server=db;Database=master;User=sa;Password=Za-14-rzz;"

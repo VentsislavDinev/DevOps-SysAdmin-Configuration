@@ -1,5 +1,5 @@
 provider "dns" {
-  version = "2.2.0"
+  #version = "2.2.0"
 }
 
 //create a sample dns  A record
@@ -38,7 +38,7 @@ data "dns_cname_record_set" "facebook" {
 }
 
 // render sample CNAME record report 
-output "facebook_cname" {
-    value = "${join(",", data.dns_cname_record_set.facebook.cname")}"
-}
+#output "facebook_cname" {
+   # value = "${join(",", data.dns_cname_record_set.facebook.cname")}"
+#}
 
