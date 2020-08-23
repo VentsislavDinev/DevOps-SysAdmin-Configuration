@@ -1,20 +1,18 @@
-//create a sample dns  A record
-resource "dns_a_record_set" "www" {
-    //create zone for the current record
-    zome = "vdinev.com"
-    name = "www"
-    address = [
-        "10.0.0.0"
-    ]
-    ttl = 300
+resource "helm_release" "example" {
+  name       = "${var.name}"
+  repository = "${var.repository}"
+  chart      = "${var.chart}"
+  version    = "${var.version}"
+
+  values = var.values
+
+  set {
+    name  = "${var.set_name}"
+    value = "${var.set_value}"
+  }
+
+  set_string {
+    name  = "${var.set_string_name}"
+    value = "${var.set_string_value}"
+  }
 }
-
-// create a sample DNS CNAME record 
-
-resource "dns_cname_record_set" "test" {
-    zone = var.zone
-    name = var.name
-    cname = var.cname
-    ttl = 300 
-}
-

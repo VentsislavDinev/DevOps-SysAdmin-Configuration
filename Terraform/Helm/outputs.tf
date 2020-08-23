@@ -1,23 +1,10 @@
-
-// get a sample A record report
-data "dns_a_record_set" "facebook" {
-    host = "facebook.com"
+data "helm_repository" "incubator" {
+  name = "${var.get_data_name}"
+  url  = "${var.get_data_url}"
 }
 
-// render sample A record report
-output "facebook_address" {
-    value = "${join(",", data.dns_a_record_set.facebook.addrs)}"
-    description = "facebook.com dns a records."
-    sensitive   = false
+resource "helm_release" "my_cache" {
+  name       = "my-cache"
+  repository = data.helm_repository.incubator.metadata[0].name
+  chart      = "redis-cache"
 }
-
-//  get sample CNAME record report
-data "dns_cname_record_set" "facebook" {
-    host = "facebook.com"
-}
-
-// render sample CNAME record report 
-#output "facebook_cname" {
-   # value = "${join(",", data.dns_cname_record_set.facebook.cname")}"
-#}
-
