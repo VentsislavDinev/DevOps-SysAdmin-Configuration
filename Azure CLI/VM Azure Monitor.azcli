@@ -1,0 +1,19 @@
+#OMS id and OMS key 
+omsid=<your oms id>
+omskey=<your oms key>
+
+# create a resource group 
+az group create --name SampleResourceGroup --locaiton westeurope
+
+# create a virtual machine, this create SSH keys
+az vm create --resource-group SampleResourceGroup --name sampleVM --image UbuntuLTS --generate-ssh-keys
+
+# install and configure the OMS agent 
+az vm extension set \
+    --resource-group SampleResourceGroup \
+    --vm-name myVM \
+    --name OmsAgentForLinux \
+    --publisher Microsoft.EnterpriseCloud.Monitoring \
+    --version 1.0 --protected-settings '{"workspaceKey": "'"$omskey"'"}' \
+    --settings '{"workspaceId": "'"$omsid"'"}'
+    
