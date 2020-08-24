@@ -1,0 +1,57 @@
+/*
+    Deploy ARM template for storage resource. 
+*/
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "name": "demo",
+            "properties": {
+                "templateLink": {
+                    "uri": "[resourceId('templateSpecRG', 'Microsoft.Resources/templateSpecs/versions', 'storageSpec', '1.0')]"
+                },
+                "parameters": {
+                },
+                "mode": "Incremental"
+            }
+        }
+    ],
+    "outputs": {}
+}
+
+/*
+    If you want to deploy this service in Azure, please use: 
+        #This step create new resource group for the storage account
+            PowerShell:
+                New-AzResourceGroup `
+                    #Set name for this script
+                    -Name storageRG `
+                    #Set location for this script
+                    -Location westus2
+            Azure CLI:
+                az group create \
+                    # Set name for this script
+                    --name storageRG \
+                    # Set location for this script
+                    --location westus2
+        #This step deploy this template. 
+            Azure CLI:
+                az deployment group create \
+                    #Set name for this deployment group
+                    --name storageRG \
+                    # file path for this template
+                    --template-file "c:\Templates\storage.json"
+            PowerShell: 
+                New-AzResourceGroupDeployment `
+                    # Set resource group name
+                    -ResourceGroupName storageRG `
+                    # file path for this template
+                    -TemplateFile "c:\Templates\storage.json"
+
+*/
