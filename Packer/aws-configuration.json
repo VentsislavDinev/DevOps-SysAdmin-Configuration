@@ -1,0 +1,160 @@
+{
+  "_comment": "sample configuration.",
+  "variables": {
+    "aws_access_key" : "",
+    "aws_secret_key" : "",
+    "aws_owners_key" : "",
+    "iam_instance_profile" : "",
+    "User": "",
+    "Host": ""
+  },
+  "builders": [ 
+        {
+            "type": "amazon-ebs",
+            "access_key": "{{user `aws_access_key`}}",
+            "secret_key": "{{user `aws_secret_key`}}",
+            "region": "us-east-1",
+            "version" : "2012-10-17",
+            "statement": [
+                {
+                    "effect": "Allow",
+                    "action": [
+                        "ec2:AttachVolume",
+                        "ec2:AuthorizeSecurityGroupIngress",
+                        "ec2:CopyImage",
+                        "ec2:CreateImage",
+                        "ec2:CreateKeypair",
+                        "ec2:CreateSecurityGroup",
+                        "ec2:CreateSnapshot",
+                        "ec2:CreateTags",
+                        "ec2:CreateVolume",
+                        "ec2:DeleteKeyPair",
+                        "ec2:DeleteSecurityGroup",
+                        "ec2:DeleteSnapshot",
+                        "ec2:DeleteVolume",
+                        "ec2:DeregisterImage",
+                        "ec2:DescribeImageAttribute",
+                        "ec2:DescribeImages",
+                        "ec2:DescribeInstances",
+                        "ec2:DescribeInstanceStatus",
+                        "ec2:DescribeRegions",
+                        "ec2:DescribeSecurityGroups",
+                        "ec2:DescribeSnapshots",
+                        "ec2:DescribeSubnets",
+                        "ec2:DescribeTags",
+                        "ec2:DescribeVolumes",
+                        "ec2:DetachVolume",
+                        "ec2:GetPasswordData",
+                        "ec2:ModifyImageAttribute",
+                        "ec2:ModifyInstanceAttribute",
+                        "ec2:ModifySnapshotAttribute",
+                        "ec2:RegisterImage",
+                        "ec2:RunInstances",
+                        "ec2:StopInstances",
+                        "ec2:TerminateInstances"
+                    ],
+                    "resource": "*"
+                }
+            ],
+            "instance_type": "t2.micro",
+            "ami_name": "packer-ami-{{timestamp}}",
+            "source_ami_filter": {
+                "filters": {
+                  "virtualization-type": "hvm",
+                  "name": "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*",
+                  "root-device-type": "ebs"
+                },
+                "owners": ["099720109477"],
+                "most_recent": true
+            },
+            "ssh_username": "ubuntu",
+            "ssh_interface": "session_manager",
+            "communicator": "ssh",
+            "iam_instance_profile": "{{user `iam_instance_profile`}}",
+            "launch_block_device_mappings": [
+                {
+                    "device_name": "/dev/sda1",
+                    "volume_size": 40,
+                    "volume_type": "gp2",
+                    "delete_on_termination": true
+                }
+            ],
+            "ami_block_device_mappings": [
+                {
+                    "device_name": "/dev/sdb",
+                    "virtual_name": "ephemeral0"
+                },
+                {
+                    "device_name": "/dev/sdc",
+                    "virtual_name":"ephemeral1"
+                }
+            ],
+            "tags": {
+                "OS_Version": "Ubuntu",
+                "Release": "Latest",
+                "Base_AMI_Name": "{{ .SourceAMIName }}",
+                "Extra": "{{ .SourceAMITags.TagName }}"
+            },
+            "user_data_file": "./boot_config/winrm_bootstrap.txt",
+            "force_deregister": true
+        },
+        {
+            "type": "amazon-chroot",
+            "access_key": "{{user `aws_access_key`}}",
+            "secret_key": "{{user `aws_secret_key`}}",
+            "region": "us-east-1",
+            "source_ami": "ami-e81d5881",
+            "source_ami_filter": {
+                "filter": {
+                    "virtualization-type": "hvm",
+                    "name": "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*",
+                    "root-device-type": "ebs"
+                },
+                "owners": ["{{user `aws_owners_key`}}"],
+                "most_recent": true
+            },
+            "ena_support": true,
+            "ami_name": "amazon-chroot-test-{{timestamp}}",
+            "nvme_device_path": "/dev/nvme1n1p",
+            "device_path": "/dev/sdf",
+            "from_scratch": true,
+            "ami_virtualization_type": "hvm",
+            "pre_mount_commands": [
+                "parted {{.Device}} mklabel msdos mkpart primary 1M 100% set 1 boot on print",
+                "mkfs.ext4 {{.Device}}1"
+            ],
+            "root_volume_size": 15,
+            "root_device_name": "xvda",
+            "ami_block_device_mappings": [
+                {
+                  "device_name": "xvda",
+                  "delete_on_termination": true,
+                  "volume_type": "gp2"
+                }
+            ]
+        }
+    ],
+
+  "provisioners": [
+    {
+      "type": "shell",
+      "script": "setup_things.sh"
+    },
+    {
+        "type": "shell",
+        "inline": ["echo Test > /tmp/test.txt"]
+    }
+  ],
+  "post-processors": [
+    {
+        "type": "manifest",
+        "output": "manifest.json",
+        "strip_path": true,
+        "custom_data": {
+            "source_ami_name": "{{ build `SourceAMIName` }}",
+            "device": "{{ build `Device` }}",
+            "mount_path": "{{ build `MountPath` }}"
+        }
+    }
+  ]
+}
