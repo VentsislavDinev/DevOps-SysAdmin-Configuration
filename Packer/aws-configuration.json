@@ -1,12 +1,18 @@
 {
-  "_comment": "sample configuration.",
+  "_comment": "sample configuration for aws with instances and storages. This configuration hava set ssh client, Pupet, Ansible, Chef IaC and Consul service discovery",
   "variables": {
     "aws_access_key" : "",
     "aws_secret_key" : "",
     "aws_owners_key" : "",
     "iam_instance_profile" : "",
     "User": "",
-    "Host": ""
+    "Host": "",
+    "chef_dir": "{{env `PACKER_CHEF_DIR`}}",
+    "chef_run_list": "{{env `PACKER_CHEF_RUN_LIST`}}",
+    "chef_client_config_tpl": "{{env `PACKER_CHEF_CLIENT_CONFIG_TPL`}}",
+    "packer_chef_bootstrap_dir": "{{env `PACKER_CHEF_BOOTSTRAP_DIR`}}" ,
+    "packer_uid": "{{env `PACKER_UID`}}",
+    "packer_gid": "{{env `PACKER_GID`}}"
   },
   "builders": [ 
         {
@@ -132,6 +138,86 @@
                   "volume_type": "gp2"
                 }
             ]
+        },
+        {
+            "type": "amazon-ebssurrogate",
+            "access_key": "{{user `aws_access_key`}}",
+            "secret_key": "{{user `aws_secret_key`}}",
+            "region":"us-east-1",
+            "ssh_username":"ubuntu",
+            "instance_type":"t2.medium",
+            "source_ami":  "ami-40d28157",
+            "launch_block_device_mappings": [
+                {
+                  "volume_type": "gp2",
+                  "d    evice_name": "/dev/xvdf",
+                  "delete_on_termination": false,
+                  "volume_size": 10
+                }
+            ],
+            "ami_root_device": {
+                "source_device_name": "/dev/xvdf",
+                "device_name": "/dev/xvda",
+                "delete_on_termination": true,
+                "volume_size": 16,
+                "volume_type": "gp2"
+            }
+        },
+        {
+            "type": "amazon-ebsvolume",
+            "region": "us-east-1",
+            "ssh_username": "ubuntu",
+            "instance_type": "t2.medium",
+            "source_ami": "ami-40d28157",
+            "ebs_volumes": [
+              {
+                "volume_type": "gp2",
+                "device_name": "/dev/xvdf",
+                "delete_on_termination": false,
+                "tags": {
+                  "zpool": "data",
+                  "Name": "Data1"
+                },
+                "volume_size": 10
+              },
+              {
+                "volume_type": "gp2",
+                "device_name": "/dev/xvdg",
+                "tags": {
+                  "zpool": "data",
+                  "Name": "Data2"
+                },
+                "delete_on_termination": false,
+                "volume_size": 10
+              },
+              {
+                "volume_size": 10,
+                "tags": {
+                  "Name": "Data3",
+                  "zpool": "data"
+                },
+                "delete_on_termination": false,
+                "device_name": "/dev/xvdh",
+                "volume_type": "gp2"
+              }
+            ]
+        },
+        {
+            "type": "amazon-instance",
+            "access_key": "YOUR KEY HERE",
+            "secret_key": "YOUR SECRET KEY HERE",
+            "region": "us-east-1",
+            "source_ami": "ami-d9d6a6b0",
+            "instance_type": "m1.small",
+            "ssh_username": "ubuntu",
+          
+            "account_id": "0123-4567-0890",
+            "s3_bucket": "packer-images",
+            "x509_cert_path": "x509.cert",
+            "x509_key_path": "x509.key",
+            "x509_upload_path": "/tmp",
+          
+            "ami_name": "packer-quick-start {{timestamp}}"
         }
     ],
 
@@ -143,6 +229,65 @@
     {
         "type": "shell",
         "inline": ["echo Test > /tmp/test.txt"]
+    },
+    {
+        "type": "shell",
+        "inline": [
+          "echo Connected via SSM at '{{build `User`}}@{{build `Host`}}:{{build `Port`}}'"
+        ]
+    },
+    {
+        "type": "ansible",
+        "playbook_file": "./playbook.yml",
+        "extra_arguments": [
+            "--connection=chroot",
+            "--inventory-file=/mnt/packer-amazon-chroot"
+        ], 
+        "user": "Administrator",
+        "use_proxy": false
+    },
+    { "type": "shell", "inline": [ "mkdir -p {{user `chef_dir`}}" ] },
+    { "type": "file",  "source": "./roles",        "destination": "{{user `chef_dir`}}" },
+    { "type": "file",  "source": "./cookbooks",    "destination": "{{user `chef_dir`}}" },
+    { "type": "file",  "source": "./data_bags",    "destination": "{{user `chef_dir`}}" },
+    { "type": "file",  "source": "./environments", "destination": "{{user `chef_dir`}}" },
+    { "type": "file",  "source": "./scripts/install_chef.sh", "destination": "{{user `chef_dir`}}/install_chef.sh" },
+    {
+        "type": "file",
+        "source": "{{user `packer_chef_bootstrap_dir`}}",
+        "destination": "/tmp/bootstrap"
+    },
+    {
+        "type": "shell",
+        "inline": [
+          "sudo mkdir -p {{user `chef_dir`}}",
+          "sudo mkdir -p /tmp/packer-chef-client",
+          "sudo chown {{user `packer_uid`}}.{{user `packer_gid`}} /tmp/packer-chef-client",
+          "sudo sh /tmp/bootstrap/bootstrap.sh"
+        ]
+    },
+    {
+      "type":              "chef-client",
+      "install_command":   "sudo bash {{user `chef_dir`}}/install_chef.sh",
+      "server_url":        "http://localhost:8889",
+      "config_template":   "./config/client.rb.template",
+      "run_list":          [ "role[testing]" ],
+      "skip_clean_node":   true,
+      "skip_clean_client": true
+    },
+    {
+        "type": "shell",
+        "inline": [
+          "sudo apt-get install -y python-pip",
+          "sudo pip install ifs",
+          "sudo ifs install consul --version=0.5.2"
+        ]
+    },
+    {
+        "type": "file",
+        "source": "/usr/local/bin/consul",
+        "destination": "consul",
+        "direction": "download"
     }
   ],
   "post-processors": [
@@ -155,6 +300,45 @@
             "device": "{{ build `Device` }}",
             "mount_path": "{{ build `MountPath` }}"
         }
-    }
+    },
+    [
+        {
+            "type": "artifice",
+            "files": ["consul"]
+        },
+        {
+            "type": "compress",
+            "output": "consul-0.5.2.tar.gz"
+        },
+        {
+            "type": "shell-local",
+            "inline": [
+              "/usr/local/bin/aws s3 cp consul-0.5.2.tar.gz s3://<s3 path>"
+            ]
+        }
+    ],
+    [
+        {
+            "type": "shell-local",
+            "inline": [ "/usr/bin/ovftool <packer-output-directory>/<vmware-name>.vmx <packer-output-directory>/<vmware-name>.ova" ]  
+        },
+        {
+            "files": [
+                "<packer-output-directory>/<vmware-name>.ova"
+            ],
+            "type": "artifice"
+        },
+        {
+            "type": "amazon-import",
+            "access_key": "YOUR KEY HERE",
+            "secret_key": "YOUR SECRET KEY HERE",
+            "region": "us-east-1",
+            "s3_bucket_name": "importbucket",
+            "license_type": "BYOL",
+            "tags": {
+                "Description": "packer amazon-import {{timestamp}}"
+            }
+        }
+    ]
   ]
 }
