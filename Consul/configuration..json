@@ -1,0 +1,33 @@
+{
+    "datacenter": "east-aws",
+    "data_dir": "/opt/consul",
+    "log_level": "INFO",
+    "addresses": {
+      "https": "0.0.0.0"
+    },
+    "ports": {
+      "https": 8501
+    },
+    "node_meta": {
+        "instance_type": "t2.medium"
+    },
+    "node_name": "sample",
+    "server": true,
+    "key_file": "/etc/pki/tls/private/my.key",
+    "cert_file": "/etc/pki/tls/certs/my.crt",
+    "ca_file": "/etc/pki/tls/certs/ca-bundle.crt",
+    "watches": [
+      {
+          "type": "checks",
+          "handler": "/usr/bin/health-check-handler.sh"
+      }
+    ],
+    "telemetry": {
+       "statsite_address": "127.0.0.1:2180"
+    },
+    "http_config": {
+        "response_headers": {
+            "Access-Control-Allow-Origin": "*"
+        }
+    }
+  }

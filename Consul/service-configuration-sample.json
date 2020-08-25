@@ -1,0 +1,102 @@
+{
+    "service": [
+        {
+            "id": "redis",
+            "name": "redis",
+            "tags": ["primary"],
+            "address": "",
+            "meta": {
+              "meta": "for my service"
+            },
+            "tagged_addresses": {
+              "lan": {
+                "address": "192.168.0.55",
+                "port": 8000
+              },
+              "wan": {
+                "address": "198.18.0.23",
+                "port": 80
+              }
+            },
+            "port": 8000,
+            "enable_tag_override": false,
+            "checks": [
+              {
+                "args": ["/usr/local/bin/check_redis.py"],
+                "interval": "10s"
+              }
+            ],
+            "kind": "connect-proxy",
+            "proxy": {
+              "destination_service_name": "redis",
+              "destination_service_id": "redis1",
+              "local_service_address": "127.0.0.1",
+              "local_service_port": 9090,
+              "config": {},
+              "upstreams": [],
+              "mesh_gateway": {
+                "mode": "local"
+              },
+              "expose": {
+                "checks": true,
+                "paths": [
+                  {
+                    "path": "/healthz",
+                    "local_path_port": 8080,
+                    "listener_port": 21500,
+                    "protocol": "http2"
+                  }
+               ]
+              }
+            },
+            "connect": {
+              "native": false,
+              "sidecar_service": {}
+            },
+            "weights": {
+              "passing": 5,
+              "warning": 1
+            },
+            "token": "233b604b-b92e-48c8-a253-5f11514e4b50",
+            "namespace": "foo"
+        },
+        {
+        "id": "red1",
+        "name": "redis",
+        "tags": [
+            "delayed",
+            "secondary"
+        ],
+        "address": "",
+        "port": 7000,
+        "checks": [
+            {
+            "args": ["/bin/check_redis", "-p", "7000"],
+            "interval": "30s",
+            "timeout": "60s"
+            }
+        ]
+        }
+    ],
+    "connect": {
+        "proxy": {
+          "config": {
+            "bind_address": "0.0.0.0",
+            "bind_port": 20000,
+            "tcp_check_address": "192.168.0.1",
+            "disable_tcp_check": false,
+            "local_service_address": "127.0.0.1:1234",
+            "local_connect_timeout_ms": 1000,
+            "handshake_timeout_ms": 10000,
+            "upstreams": []
+          },
+          "upstreams": [
+            {
+              "config": {
+                "connect_timeout_ms": 1000
+              }
+            }
+          ]
+        }
+    }
+}

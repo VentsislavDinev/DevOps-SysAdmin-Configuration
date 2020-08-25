@@ -1,0 +1,29 @@
+{
+    "checks": [
+        {
+          "id": "chk1",
+          "name": "mem",
+          "args": ["/bin/check_mem", "-limit", "256MB"],
+          "interval": "5s"
+        },
+        {
+          "id": "chk2",
+          "name": "/health",
+          "http": "http://localhost:5000/health",
+          "interval": "15s"
+        },
+        {
+          "id": "chk3",
+          "name": "cpu",
+          "args": ["/bin/check_cpu"],
+          "interval": "10s"
+        },
+        {
+            "id": "chk4",
+            "name": "Service health status",
+            "grpc": "127.0.0.1:12345/my_service",
+            "grpc_use_tls": true,
+            "interval": "10s"
+        }
+      ]
+}
