@@ -1,0 +1,195 @@
+# sample script for CI/CD with .Net project in Azure DevOps.
+# Add documentations files, version changes etc. 
+
+resources:
+  containers:
+  - container: my_container
+    image: ubuntu:16.04
+    
+  - container: pg11
+    image: postgres:11
+    ports:
+    - 8080:80
+    - 5432
+  - container: pg10
+    image: postgres:10
+    ports:
+    - 8080:81
+    - 5433
+container: my_container
+
+services:
+  postgres: $[ variables['postgresService'] ]
+
+parameters:
+  - name: image
+    displayName: Pool Image
+    type: string
+    default: ubuntu-latest
+    values:
+    - windows-latest
+    - vs2017-win2016
+    - ubuntu-latest
+    - ubuntu-16.04
+    - macOS-latest
+    - macOS-10.14
+variables:
+  buildConfiguration: 'Release'
+  imageName: 'pipelines-javascript-docker'
+  system.debug: true
+  containerRegistryServiceConnection: serviceConnectionName
+  imageRepository: foobar/content-trust
+  tag: test
+
+trigger:
+  branches:
+    # add new master and releases
+    include:
+    - master
+    - releases/*
+    # remove old version for this releases
+    exclude:
+    - releases/old*
+  paths:
+    # add new documentation for this release
+    include:
+    - docs/*
+    # remove README file
+    exclude:
+    - docs/README.md
+  tags:
+    # add new version. 
+    include:
+    - v2.*
+    # remov v2.0 
+    exclude:
+    - v2.0
+pr:
+  - master
+  - releases/*
+
+strategy:
+  matrix:
+    jdk10_linux:
+      imageName: ${{ parameters.image }}
+      jdk_version: "1.10"
+    jdk11_windows:
+      imageName: ${{ parameters.image }}
+      jdk_version: "1.11"
+  maxParallel: 2
+pool:
+  vmImage: ${{ parameters.image }}
+steps:
+- checkout: self  # self represents the repo where the initial Pipelines YAML file was found
+  clean: true  # whether to fetch clean each time
+  fetchDepth: 1  # the depth of commits to ask Git to fetch
+  lfs: true  # whether to download Git-LFS files
+  submodules: true | recursive  # set to 'true' for a single level of submodules or 'recursive' to get submodules of submodules
+  path: string  # path to check out source code, relative to the agent's build directory (e.g. \_work\1)
+  persistCredentials: true  # set to 'true' to leave the OAuth token in the Git config after the initial fetch
+- task: UseDotNet@2
+  inputs:
+    version: '5.0.x'
+    performMultiLevelLookup: true 
+    includePreviewVersions: true # Required for preview versions
+
+- task: UseDotNet@2
+  inputs:
+    version: '3.0.x'
+    packageType: runtime
+    performMultiLevelLookup: true
+    includePreviewVersions: true # Required for preview versions
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'restore'
+    feedsToUse: 'select'
+    vstsFeed: 'my-vsts-feed' # A series of numbers and letters
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    arguments: '--configuration $(buildConfiguration)'
+  displayName: 'dotnet build $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: test
+    projects: '**/*Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration)  --collect "Code coverage"'
+
+- script: dotnet test VDinevSampleApp --logger trx --collect "Code coverage"
+
+- task: PublishTestResults@2
+  condition: succeededOrFailed()
+  inputs:
+    testRunner: VSTest
+    testResultsFiles: '**/*.trx'
+
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish code coverage report'
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(Build.SourcesDirectory)/**/coverage.cobertura.xml'
+
+- task: DotNetCoreCLI@2
+  displayName: Build
+  inputs:
+    command: build
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)' # Update this to match your need
+
+- task: PublishBuildArtifacts@1
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+# use cache for reduce build time
+- task: Cache@2
+  inputs:
+    key: 'nuget | "$(Agent.OS)" | **/packages.lock.json,!**/bin/**'
+    restoreKeys: |
+       nuget | "$(Agent.OS)"
+    path: $(NUGET_PACKAGES)
+  displayName: Cache NuGet packages
+
+- task: Docker@2
+  displayName: Build an image
+  inputs:
+    repository: $(imageName)
+    command: build
+    Dockerfile: app/Dockerfile
+
+- task: Docker@2
+  displayName: Push image
+  inputs:
+    containerRegistry: |
+      $(dockerHub)
+    repository: $(imageName)
+    command: push
+    tags: |
+      test1
+      test2
+- task: Docker@2
+  inputs: 
+    command: push
+    containerRegistry: $(containerRegistryServiceConnection)
+    repository: $(imageRepository)
+    tags: |
+      $(tag)
+    arguments: '--disable-content-trust=false'
+  env:
+    DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE: $(DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE)
+
+schedules:
+- cron: "0 0 * * *" # cron syntax defining a schedule
+  displayName: Daily midnight build # friendly name given to a specific schedule
+  branches:
+    include:
+    - master
+    - releases/*
+    exclude:
+      - releases/ancient/*
+  always: true # whether to always run the pipeline or only if there have been source code changes since the last successful scheduled run. The default is false.
+- cron: "0 12 * * 0"
+  displayName: Weekly Sunday build
+  branches:
+    include:
+    - releases/*
+  always: true
+
