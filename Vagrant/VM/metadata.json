@@ -1,0 +1,19 @@
+{
+    "author": "Ventsislav Dinev",
+    "homepage" : "vdinev.com",
+    "name": "hashicorp/bionic64",
+    "description": "This box contains Ubuntu 18.04 LTS 64-bit.",
+    "versions": [
+      {
+        "version": "0.1.0",
+        "providers": [
+          {
+            "name": "virtualbox",
+            "url": "http://example.com/bionic64_010_virtualbox.box",
+            "checksum_type": "sha1",
+            "checksum": "foo"
+          }
+        ]
+      }
+    ]
+  }

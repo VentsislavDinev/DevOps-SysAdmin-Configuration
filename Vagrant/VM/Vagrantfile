@@ -1,0 +1,72 @@
+Vagrant.configure("2") do |config|
+    # create 7 nodes with shell command "Hello from node and number of node"
+    (1..7).each do |i|
+        config.vm.define "node-#{i}" do |node|
+            node.vm.network "forwarded_port", guest: 80, host: 8080, protocol: "udp", auto_correct true
+            node.vm.usable_port_range = 8000...8999
+            node.vm.hostname =  "myhost#{node}.local"
+            node.vm.network "private_network", type: "dhcp",   virtualbox__intnet: true
+            node.vm.network "public_network", use_dhcp_assigned_default_route: true, hostname: true
+            node.vm.box = "hashicorp/bionic64"
+            node.vm.synced_folder = ".", "/vagrant", type: "nfs", nfs_version: 4, nfs_udp: false, owner: "root", group: "root", disabled: true
+            node.vm.disk :disk, name "backup", size "10GB"  
+            node.vm.disk :dvd, name "installer", path: "./installer.iso"
+            node.vm.provider "virtualbox" do |vb| 
+                vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
+                vb.gui = true
+                vb.memory = 2048
+                vb.cpus = 16
+                vb.name = "server_#{i}"
+                vb.check_guest_additions = false
+                vb.linked_clone = true if Gem::Version.new(Vagrant::VERSION) >= Gem::Version.new('1.8.0')
+            end 
+            node.vm.disk  :disk, size: "100GB", primary: true, name: "extra_storage"
+            h.vm.disk :dvd, name: "installer", file: "./installer.iso"            
+            node.vm.provision "shell", 
+                inline: "echo hello from node #{i}"
+            # set file for all nodes. 
+            node.vm.provision "file", 
+                source: "~/.gitconfig", destination: ".gitconfig"
+            node.vm.provision "ansible" do |ansible|
+                ansible.plyabook = "playbook.yml"
+                ansible.host_vars= {
+                    "#{i}" => { 
+                        "http_port" => 80,
+                        "maxRequestsPerChild" => 808
+                    }
+                }
+                ansible.inventory_path = "inventory"
+                ansible.verbose = true
+                ansible.install = true
+
+                ansible.limit = "all"
+                ansible.install_mode = "pip"
+                ansible.version = "2.2.1.0"
+            end
+            node.vm.provision "chef_solo" do |chef| 
+                chef.add_recipe "apache"
+                chef.roles_path = "roles"
+                chef.add_role("web")
+                chef.data_bags_path = "data_bags"
+                chef.node_name = "foo"
+                chef.json = {
+                    "apache" => {
+                    "listen_address" => "0.0.0.0"
+                    }
+                }
+            end
+        end
+        
+    end
+
+    (1..18).each do |i| 
+        config.vm.define  "web-#{i}", primary: true do |web|
+            web.vm.box = "apache"
+        end
+    end
+    (1..17).each do |i|
+        config.vm.define "db_clusters", autostart: false do |db_clusters|
+
+        end
+    end
+end
